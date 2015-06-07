@@ -3079,10 +3079,17 @@ void synaptics_rmi4_new_function(enum exp_fn fn_type, bool insert,
     }
     mutex_unlock(&exp_fn_ctrl_mutex);
     
-    touch_state_wq = create_singlethread_workqueue("touch_state_wq");
+    /*touch_state_wq = create_singlethread_workqueue("touch_state_wq");
     if (IS_ERR_OR_NULL(touch_state_wq))
         pr_err("unable to create a workqueue\n");
-    INIT_DELAYED_WORK(&change_state_work, touch_suspend);
+    INIT_DELAYED_WORK(&change_state_work, touch_suspend);*/
+    #ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+    		touch_state_wq =
+                    create_singlethread_workqueue("touch_state_wq");
+            if (IS_ERR_OR_NULL(touch_state_wq))
+        			pr_err("unable to create a workqueue\n");
+    		INIT_DELAYED_WORK(&change_state_work, touch_suspend);
+    #endif
     
     mutex_lock(&exp_fn_ctrl.list_mutex);
     if (insert) {
@@ -3379,7 +3386,10 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
         cancel_delayed_work_sync(&exp_fn_ctrl.det_work);
         flush_workqueue(exp_fn_ctrl.det_workqueue);
         destroy_workqueue(exp_fn_ctrl.det_workqueue);
-        destroy_workqueue(touch_state_wq);
+        #ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+            flush_workqueue(touch_state_wq);
+            destroy_workqueue(touch_state_wq);
+        #endif
     }
     
     rmi4_data->touch_stopped = true;
@@ -3726,9 +3736,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
                 rmi4_data->touch_stopped = true;
             }
 #ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
-        }
-        else
-        {
+        }else{
             pr_info("suspend avoided!\n");
             return 0;
         }
@@ -3752,8 +3760,9 @@ static int synaptics_rmi4_resume(struct device *dev)
 {
     struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
     
-    cancel_delayed_work(&change_state_work);
-    
+    #ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+        cancel_delayed_work(&change_state_work);
+    #endif
     synaptics_dsx_resumeinfo_start(rmi4_data);
     
     if (rmi4_data->touch_stopped) {

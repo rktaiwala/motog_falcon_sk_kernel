@@ -1726,7 +1726,7 @@ static int ct406_probe(struct i2c_client *client,
 #else
 	ct->pm_notifier.notifier_call = ct406_pm_event;
 	error = register_pm_notifier(&ct->pm_notifier);
-	if (error < 0) {
+	if (error < 0)
 		pr_err("%s:Register_pm_notifier failed: %d\n", __func__, error);
 #endif
 	return 0;
